@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>শৈশব যুব সমাজ সংগঠন</title>
+  <style>
+    /* প্রয়োজনীয় সিএসএস স্টাইল */
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f6f8; }
+    .card { background: #fff; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .notice { background: #e8f5e9; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .stat { background: #f0f4f8; padding: 10px; border-radius: 5px; text-align: center; }
+    .stat strong { display: block; font-size: 1.2em; color: #2e7d32; }
+    .hide { display: none; }
+    .page { display: none; }
+    .page.active { display: block; }
+    input, textarea, select, button { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; }
+    button { cursor: pointer; border: none; border-radius: 4px; padding: 10px; }
+    button.primary { background-color: #2e7d32; color: white; }
+    button.secondary { background-color: #0288d1; color: white; }
+    button.danger { background-color: #d32f2f; color: white; }
+    .smallbtn { width: auto; padding: 5px 10px; font-size: 0.9em; margin-right: 5px; }
+    .muted { color: #666; font-size: 0.85em; }
+    .member-line { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 0.8em; }
+    .badge.ok { background: #c8e6c9; color: #2e7d32; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <button data-page="home" onclick="go('home')">হোম</button>
+  <button data-page="donate" onclick="go('donate')">অনুদান</button>
+  <button data-page="members" onclick="go('members')">সদস্যগণ</button>
+  <button data-page="finance" onclick="go('finance')">আয়-ব্যয়</button>
+  <button data-page="account" onclick="go('account')">আমার একাউন্ট</button>
+  <button data-page="admin" onclick="go('admin')">অ্যাডমিন (<span id="accountPill">অতিথি</span>)</button>
+</nav>
+
+<hr>
+
+<!-- হোম পেজ -->
+<section class="page active" id="home">
+  <div class="card">
+    <h2>🏠 শৈশব যুব সমাজ সংগঠন</h2>
+    <div class="grid">
+      <div class="stat"><small>সদস্য</small><strong id="statMembers">0</strong></div>
+      <div class="stat"><small>মোট আয়</small><strong id="statIncome">৳0</strong></div>
+      <div class="stat"><small>মোট ব্যয়</small><strong id="statExpense">৳0</strong></div>
+      <div class="stat"><small>ব্যালেন্স</small><strong id="statBalance">৳0</strong></div>
+    </div>
+    <p>নগদ নম্বর: <strong id="nagadShown">01XXXXXXXXX</strong></p>
+  </div>
+  <h3>📢 সাম্প্রতিক খবর ও পোস্ট</h3>
+  <div id="feed"></div>
+</section>
+
+<!-- অনুদান পেজ -->
+<section class="page" id="donate">
+  <div class="card">
+    <h2>💚 অনুদান জমা দিন</h2>
+    <div class="notice">
+      ১. নিচের নগদ নম্বরে অনুদান পাঠান।<br>
+      ২. Transaction ID লিখুন।<br>
+      ৩. অ্যাডমিন যাচাই করে অনুমোদন দেবেন।
+    </div>
+    <p>নগদ Personal নম্বর:</p>
+    <h2 id="donateNumber">01XXXXXXXXX</h2>
+    <button class="secondary" onclick="copyNagad()">নম্বর কপি করুন</button>
+    <label>আপনার সদস্য আইডি / নাম</label>
+    <input id="donorName" placeholder="নাম বা সদস্য আইডি">
+    <label>অনুদানের পরিমাণ (টাকা)</label>
+    <input id="donationAmount" type="number" min="1" placeholder="যেমন 100">
+    <label>নগদ Transaction ID</label>
+    <input id="trxId" placeholder="Transaction ID লিখুন">
+    <button class="primary" onclick="submitDonation()">অনুদানের আবেদন পাঠান</button>
+    <p class="muted">অনুমোদনের আগে অনুদান হিসাবের অন্তর্ভুক্ত হবে না।</p>
+  </div>
+</section>
+
+<!-- সদস্য পেজ -->
+<section class="page" id="members">
+  <div class="card">
+    <h2>👥 আমাদের সদস্য পরিবার</h2>
+    <p>মোট অনুমোদিত সদস্য: <strong id="memberCount">0</strong></p>
+    <div id="memberList"></div>
+  </div>
+</section>
+
+<!-- আয়-ব্যয় পেজ -->
+<section class="page" id="finance">
+  <div class="card">
+    <h2>📊 সংগঠনের আয়-ব্যয়</h2>
+    <div class="grid">
+      <div class="stat"><small>মোট আয়</small><strong id="financeIncome">৳0</strong></div>
+      <div class="stat"><small>মোট ব্যয়</small><strong id="financeExpense">৳0</strong></div>
+      <div class="stat"><small>বর্তমান ব্যালেন্স</small><strong id="financeBalance">৳0</strong></div>
+      <div class="stat"><small>অনুমোদিত অনুদান</small><strong id="financeDonations">৳0</strong></div>
+    </div>
+    <p class="muted">হিসাব অ্যাডমিনের দেওয়া তথ্য অনুযায়ী দেখানো হবে।</p>
+  </div>
+</section>
+
+<!-- একাউন্ট পেজ -->
+<section class="page" id="account">
+  <div class="card">
+    <h2>🪪 সদস্য আইডি আবেদন</h2>
+    <label>আপনার পূর্ণ নাম</label>
+    <input id="applyName" placeholder="আপনার নাম">
+    <label>মোবাইল নম্বর</label>
+    <input id="applyPhone" type="tel" placeholder="01XXXXXXXXX">
+    <label>ঠিকানা</label>
+    <input id="applyAddress" placeholder="আপনার ঠিকানা">
+    <label>কে আপনাকে সংগঠনে এনেছেন? (ঐচ্ছিক)</label>
+    <input id="referrer" placeholder="সদস্যের নাম বা আইডি">
+    <button class="primary" onclick="applyMembership()">আবেদন জমা দিন</button>
+  </div>
+
+  <div class="card">
+    <h2>আমার সদস্য তথ্য</h2>
+    <label>আপনার নিবন্ধিত মোবাইল নম্বর</label>
+    <input id="loginPhone" type="tel" placeholder="আবেদনের সময় দেওয়া নম্বর">
+    <button class="primary" onclick="memberLogin()">আমার তথ্য দেখুন</button>
+    <div id="myDetails"></div>
+  </div>
+</section>
+
+<!-- অ্যাডমিন পেজ -->
+<section class="page" id="admin">
+  <div class="card" id="adminLogin">
+    <h2>🔐 অ্যাডমিন প্রবেশ</h2>
+    <p class="muted">প্রথমবার হলে নিজের গোপন PIN সেট করুন।</p>
+    <label>অ্যাডমিন PIN</label>
+    <input id="adminPin" type="password" placeholder="গোপন PIN লিখুন">
+    <button class="primary" onclick="adminEnter()">প্রবেশ করুন</button>
+    <p class="muted">PIN ভুলে গেলে এই ডেমো অ্যাপের স্থানীয় তথ্য রিসেট করতে হতে পারে।</p>
+  </div>
+
+  <div id="adminPanel" class="hide">
+    <div class="card">
+      <h2>⚙️ অ্যাডমিন প্যানেল</h2>
+      <button class="secondary" onclick="adminLogout()">লগআউট</button>
+    </div>
+
+    <div class="card">
+      <h2>সদস্য আবেদন</h2>
+      <div id="pendingMembers"></div>
+    </div>
+
+    <div class="card">
+      <h2>অনুদান যাচাই</h2>
+      <div id="pendingDonations"></div>
+    </div>
+
+    <div class="card">
+      <h2>নগদ নম্বর পরিবর্তন</h2>
+      <input id="newNagad" placeholder="নতুন নগদ Personal নম্বর">
+      <button class="primary" onclick="saveNagad()">নম্বর সংরক্ষণ</button>
+    </div>
+
+    <div class="card">
+      <h2>আয়-ব্যয় হিসাব</h2>
+      <label>মোট আয় (টাকা)</label>
+      <input id="totalIncome" type="number" min="0">
+      <label>মোট ব্যয় (টাকা)</label>
+      <input id="totalExpense" type="number" min="0">
+      <button class="primary" onclick="saveFinance()">হিসাব সংরক্ষণ</button>
+    </div>
+
+    <div class="card">
+      <h2>নতুন পোস্ট প্রকাশ</h2>
+      <textarea id="postText" placeholder="সংগঠনের খবর বা কার্যক্রম লিখুন"></textarea>
+      <button class="primary" onclick="publishPost()">পোস্ট প্রকাশ করুন</button>
+    </div>
+
+    <div class="card">
+      <h2>সদস্য তালিকা</h2>
+      <div id="adminMemberList"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <hr>
+  <p style="text-align: center;" class="muted">শৈশব যুব সমাজ সংগঠন • মানুষের কল্যাণে</p>
+</footer>
+
+<script>
+const KEY = "shoishob_yubo_app_data_v1";
+const PIN_KEY = "shoishob_yubo_admin_pin_v1";
+
+let data = {
+  members: [],
+  donations: [],
+  posts: [],
+  nagad: "01XXXXXXXXX",
+  income: 0,
+  expense: 0
+};
+
+try {
+  const saved = localStorage.getItem(KEY);
+  if (saved) data = {...data, ...JSON.parse(saved)};
+} catch (e) {}
+
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function money(n) {
+  return "৳" + Number(n || 0).toLocaleString("en-US");
+}
+
+function approvedMembers() {
+  return data.members.filter(m => m.status === "approved");
+}
+
+function approvedDonations() {
+  return data.donations.filter(d => d.status === "approved");
+}
+
+function totalDonations() {
+  return approvedDonations().reduce((sum, d) => sum + Number(d.amount || 0), 0);
+}
+
+function balance() {
+  return Number(data.income || 0) - Number(data.expense || 0);
+}
+
+function go(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+
+  const target = document.getElementById(page);
+  if (target) target.classList.add("active");
+
+  const btn = document.querySelector('nav button[data-page="' + page + '"]');
+  if (btn) btn.classList.add("active");
+
+  if (page === "admin") renderAdmin();
+  if (page === "members") renderMembers();
+  if (page === "home") renderHome();
+  if (page === "finance") renderFinance();
+}
+
+function copyNagad() {
+  const number = data.nagad;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(number)
+      .then(() => alert("নগদ নম্বর কপি হয়েছে"))
+      .catch(() => prompt("নম্বরটি কপি করুন:", number));
+  } else {
+    prompt("নম্বরটি কপি করুন:", number);
+  }
+}
+
+function applyMembership() {
+  const name = document.getElementById("applyName").value.trim();
+  const phone = document.getElementById("applyPhone").value.trim();
+  const address = document.getElementById("applyAddress").value.trim();
+  const referrer = document.getElementById("referrer").value.trim();
+
+  if (!name || !phone || !address) {
+    alert("নাম, মোবাইল ও ঠিকানা পূরণ করুন");
+    return;
+  }
+
+  if (data.members.some(m => m.phone === phone)) {
+    alert("এই মোবাইল নম্বর দিয়ে আগে আবেদন করা হয়েছে");
+    return;
+  }
+
+  data.members.push({
+    id: "SY-" + Date.now().toString().slice(-6),
+    name, phone, address, referrer,
+    status: "pending",
+    role: "সদস্য",
+    created: new Date().toLocaleDateString("bn-BD")
+  });
+
+  save();
+  alert("আবেদন জমা হয়েছে। অ্যাডমিনের অনুমোদনের জন্য অপেক্ষা করুন।");
+  document.getElementById("applyName").value = "";
+  document.getElementById("applyPhone").value = "";
+  document.getElementById("applyAddress").value = "";
+  document.getElementById("referrer").value = "";
+  renderAdmin();
+}
+
+function memberLogin() {
+  const phone = document.getElementById("loginPhone").value.trim();
+  const box = document.getElementById("myDetails");
+  const m = data.members.find(x => x.phone === phone && x.status === "approved");
+
+  if (!m) {
+    box.innerHTML = '<p class="notice">অনুমোদিত সদস্য পাওয়া যায়নি। আবেদন এখনো অপেক্ষমাণ হতে পারে।</p>';
+    return;
+  }
+
+  const mine = approvedDonations().filter(d => d.phone === m.phone);
+  const donated = mine.reduce((s, d) => s + Number(d.amount), 0);
+  const referrals = approvedMembers().filter(x => x.referrer === m.id || x.referrer === m.name).length;
+
+  box.innerHTML = `
+    <div class="notice">
+      <strong>সদস্য আইডি:</strong> ${escapeHTML(m.id)}<br>
+      <strong>নাম:</strong> ${escapeHTML(m.name)}<br>
+      <strong>পদ:</strong> ${escapeHTML(m.role || "সদস্য")}<br>
+      <strong>অনুমোদিত অনুদান:</strong> ${money(donated)}<br>
+      <strong>আপনার মাধ্যমে যুক্ত সদস্য:</strong> ${referrals}
+    </div>`;
+}
+
+function submitDonation() {
+  const name = document.getElementById("donorName").value.trim();
+  const amount = Number(document.getElementById("donationAmount").value);
+  const trxId = document.getElementById("trxId").value.trim();
+
+  if (!name || !Number.isFinite(amount) || amount <= 0 || !trxId) {
+    alert("নাম/আইডি, সঠিক পরিমাণ ও Transaction ID দিন");
+    return;
+  }
+
+  if (data.donations.some(d => d.trxId.toLowerCase() === trxId.toLowerCase())) {
+    alert("এই Transaction ID আগেই জমা হয়েছে");
+    return;
+  }
+
+  const member = data.members.find(m =>
+    (m.id.toLowerCase() === name.toLowerCase() ||
+     m.name.toLowerCase() === name.toLowerCase() ||
+     m.phone === name) && m.status === "approved"
+  );
+
+  data.donations.push({
+    id: Date.now(),
+    name,
+    phone: member ? member.phone : "",
+    amount,
+    trxId,
+    status: "pending",
+    date: new Date().toLocaleDateString("bn-BD")
+  });
+
+  save();
+  alert("অনুদানের তথ্য জমা হয়েছে। যাচাই না হওয়া পর্যন্ত হিসাবের মধ্যে যোগ হবে না।");
+  document.getElementById("donorName").value = "";
+  document.getElementById("donationAmount").value = "";
+  document.getElementById("trxId").value = "";
+  renderAdmin();
+}
+
+function adminEnter() {
+  const entered = document.getElementById("adminPin").value;
+  if (!entered) {
+    alert("PIN লিখুন");
+    return;
+  }
+
+  const existing = localStorage.getItem(PIN_KEY);
+
+  if (!existing) {
+    if (entered.length < 6) {
+      alert("নিরাপত্তার জন্য অন্তত ৬ অক্ষরের PIN দিন");
+      return;
+    }
+
+    if (!confirm("এই PIN-টি প্রথমবারের অ্যাডমিন PIN হিসেবে সেট করবেন?")) return;
+
+    localStorage.setItem(PIN_KEY, entered);
+    alert("PIN সেট হয়েছে। এটি গোপন রাখুন।");
+  } else if (entered !== existing) {
+    alert("PIN সঠিক নয়");
+    return;
+  }
+
+  document.getElementById("adminLogin").classList.add("hide");
+  document.getElementById("adminPanel").classList.remove("hide");
+  document.getElementById("accountPill").textContent = "অ্যাডমিন";
+  document.getElementById("adminPin").value = "";
+  renderAdmin();
+}
+
+function adminLogout() {
+  document.getElementById("adminLogin").classList.remove("hide");
+  document.getElementById("adminPanel").classList.add("hide");
+  document.getElementById("accountPill").textContent = "অতিথি";
+  document.getElementById("adminPin").value = "";
+}
+
+function approveMember(id, approved) {
+  const m = data.members.find(x => x.id === id);
+  if (!m) return;
+  m.status = approved ? "approved" : "rejected";
+  save();
+  renderAdmin();
+  renderHome();
+  renderMembers();
+}
+
+function approveDonation(id, approved) {
+  const d = data.donations.find(x => x.id === id);
+  if (!d) return;
+
+  if (approved && !confirm("লেনদেন যাচাই করেছেন তো? অনুমোদন করবেন?")) return;
+
+  d.status = approved ? "approved" : "rejected";
+  if (approved) data.income = Number(data.income || 0) + Number(d.amount || 0);
+
+  save();
+  renderAdmin();
+  renderHome();
+  renderFinance();
+}
+
+function saveNagad() {
+  const n = document.getElementById("newNagad").value.trim();
+  if (!n) {
+    alert("নগদ নম্বর লিখুন");
+    return;
+  }
+  data.nagad = n;
+  save();
+  renderHome();
+  alert("নগদ নম্বর সংরক্ষণ হয়েছে");
+}
+
+function saveFinance() {
+  const income = Number(document.getElementById("totalIncome").value);
+  const expense = Number(document.getElementById("totalExpense").value);
+
+  if (!Number.isFinite(income) || !Number.isFinite(expense) || income < 0 || expense < 0) {
+    alert("সঠিক আয় ও ব্যয়ের পরিমাণ লিখুন");
+    return;
+  }
+
+  data.income = income;
+  data.expense = expense;
+  save();
+  renderHome();
+  renderFinance();
+  alert("হিসাব সংরক্ষণ হয়েছে");
+}
+
+function publishPost() {
+  const text = document.getElementById("postText").value.trim();
+  if (!text) {
+    alert("পোস্ট লিখুন");
+    return;
+  }
+
+  data.posts.unshift({
+    id: Date.now(),
+    text,
+    date: new Date().toLocaleString("bn-BD"),
+    likes: 0,
+    comments: []
+  });
+
+  save();
+  document.getElementById("postText").value = "";
+  renderHome();
+  alert("পোস্ট প্রকাশ হয়েছে");
+}
+
+function likePost(id) {
+  const p = data.posts.find(x => x.id === id);
+  if (!p) return;
+  p.likes++;
+  save();
+  renderHome();
+}
+
+function commentPost(id) {
+  const p = data.posts.find(x => x.id === id);
+  if (!p) return;
+  const c = prompt("আপনার মন্তব্য লিখুন");
+  if (!c || !c.trim()) return;
+  p.comments.push(c.trim());
+  save();
+  renderHome();
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[ch]);
+}
+
+function renderHome() {
+  document.getElementById("statMembers").textContent = approvedMembers().length;
+  document.getElementById("statIncome").textContent = money(data.income);
+  document.getElementById("statExpense").textContent = money(data.expense);
+  document.getElementById("statBalance").textContent = money(balance());
+  document.getElementById("nagadShown").textContent = data.nagad;
+  document.getElementById("donateNumber").textContent = data.nagad;
+
+  const feed = document.getElementById("feed");
+
+  if (!data.posts.length) {
+    feed.innerHTML = '<div class="card muted">এখনো কোনো পোস্ট প্রকাশ করা হয়নি।</div>';
+    return;
+  }
+
+  feed.innerHTML = data.posts.map(p => `
+    <div class="card">
+      <div class="muted">শৈশব যুব সমাজ সংগঠন • ${escapeHTML(p.date)}</div>
+      <p style="margin: 10px 0;">${escapeHTML(p.text)}</p>
+      <div>
+        <button class="secondary smallbtn" onclick="likePost(${p.id})">👍 ভালো লাগল (${p.likes})</button>
+        <button class="secondary smallbtn" onclick="commentPost(${p.id})">💬 মন্তব্য (${p.comments.length})</button>
+      </div>
+      ${p.comments.map(c => `<p class="muted" style="margin-top: 5px;">💬 ${escapeHTML(c)}</p>`).join("")}
+    </div>`).join("");
+}
+
+function renderMembers() {
+  const list = document.getElementById("memberList");
+  document.getElementById("memberCount").textContent = approvedMembers().length;
+
+  if (!approvedMembers().length) {
+    list.innerHTML = '<div class="muted">এখনো অনুমোদিত সদস্য নেই।</div>';
+    return;
+  }
+
+  list.innerHTML = approvedMembers().map(m => `
+    <div class="member-line">
+      <div><strong>${escapeHTML(m.name)}</strong><div class="muted">${escapeHTML(m.id)}</div></div>
+      <span class="badge ok">${escapeHTML(m.role || "সদস্য")}</span>
+    </div>`).join("");
+}
+
+function renderFinance() {
+  document.getElementById("financeIncome").textContent = money(data.income);
+  document.getElementById("financeExpense").textContent = money(data.expense);
+  document.getElementById("financeBalance").textContent = money(balance());
+  document.getElementById("financeDonations").textContent = money(totalDonations());
+}
+
+function renderAdmin() {
+  if (document.getElementById("adminPanel").classList.contains("hide")) return;
+
+  document.getElementById("pendingMembers").innerHTML =
+    data.members.filter(m => m.status === "pending").map(m => `
+      <div class="card">
+        <strong>${escapeHTML(m.name)}</strong>
+        <p class="muted">${escapeHTML(m.phone)} • ${escapeHTML(m.address)}</p>
+        <div>
+          <button class="primary smallbtn" onclick="approveMember('${m.id}',true)">অনুমোদন</button>
+          <button class="danger smallbtn" onclick="approveMember('${m.id}',false)">প্রত্যাখ্যান</button>
+        </div>
+      </div>`).join("") || '<div class="muted">কোনো অপেক্ষমাণ আবেদন নেই।</div>';
+
+  document.getElementById("pendingDonations").innerHTML =
+    data.donations.filter(d => d.status === "pending").map(d => `
+      <div class="card">
+        <strong>${escapeHTML(d.name)}</strong>
+        <p>পরিমাণ: ${money(d.amount)}</p>
+        <p>TrxID: ${escapeHTML(d.trxId)}</p>
+        <div>
+          <button class="primary smallbtn" onclick="approveDonation(${d.id},true)">অনুমোদন</button>
+          <button class="danger smallbtn" onclick="approveDonation(${d.id},false)">প্রত্যাখ্যান</button>
+        </div>
+      </div>`).join("") || '<div class="muted">কোনো অপেক্ষমাণ অনুদান নেই।</div>';
+
+  document.getElementById("adminMemberList").innerHTML =
+    data.members.map(m => `
+      <div class="member-line">
+        <div><strong>${escapeHTML(m.name)}</strong><div class="muted">${escapeHTML(m.phone)} • ${escapeHTML(m.id)}</div></div>
+        <select style="width: auto;" onchange="setRole('${m.id}',this.value)">
+          <option ${m.role === "সদস্য" ? "selected" : ""}>সদস্য</option>
+          <option ${m.role === "সভাপতি" ? "selected" : ""}>সভাপতি</option>
+          <option ${m.role === "সম্পাদক" ? "selected" : ""}>সম্পাদক</option>
+          <option ${m.role === "কোষাধ্যক্ষ" ? "selected" : ""}>কোষাধ্যক্ষ</option>
+        </select>
+      </div>`).join("") || '<div class="muted">সদস্য নেই।</div>';
+
+  document.getElementById("newNagad").value = data.nagad;
+  document.getElementById("totalIncome").value = data.income;
+  document.getElementById("totalExpense").value = data.expense;
+}
+
+function setRole(id, role) {
+  const m = data.members.find(x => x.id === id);
+  if (!m) return;
+  m.role = role;
+  save();
+  renderMembers();
+}
+
+// Initial render
+renderHome();
+renderMembers();
+renderFinance();
+</script>
+</body>
+</html>
